@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <title>PermRepo Restore — Upload</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            max-width: 640px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #0a0e14;
+            color: #f0f3f6;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        }
+
+        h1 { 
+            font-size: 24px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #58a6ff 0%, #79c0ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .drop-zone {
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 16px;
+            transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .drop-zone.dragover {
+            border-color: #58a6ff;
+            background: rgba(88, 166, 255, 0.08);
+        }
+
+        .drop-zone p {
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 15px;
+            margin: 0;
+        }
+
+        .drop-zone p.hint {
+            font-size: 12px;
+            margin-top: 8px;
+            color: rgba(255, 255, 255, 0.35);
+        }
+
+        .picker-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .picker-btn {
+            padding: 11px 12px;
+            border: 1px solid rgba(88, 166, 255, 0.28);
+            border-radius: 10px;
+            background: rgba(88, 166, 255, 0.08);
+            color: #79c0ff;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .picker-btn:hover { background: rgba(88, 166, 255, 0.15); }
+
+        .selection-summary {
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 12px;
+            margin: 0 0 12px;
+        }
+
+        .file-list {
+            margin-bottom: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            color: #f0f3f6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .file-item-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
+        }
+
+        .file-item-size {
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .file-item-remove {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            background: rgba(248, 81, 73, 0.15);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+            border-radius: 6px;
+            color: #f85149;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 14px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .file-item-remove:hover {
+            background: rgba(248, 81, 73, 0.25);
+        }
+
+        button.upload-btn { 
+            padding: 14px;
+            font-size: 15px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            width: 100%;
+            font-weight: 600;
+            transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        button.upload-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(63, 185, 80, 0.25);
+        }
+
+        button.upload-btn:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.35);
+            cursor: not-allowed;
+        }
+
+        .status { 
+            margin-top: 20px;
+            padding: 14px;
+            border-radius: 12px;
+            word-break: break-all;
+            white-space: pre-wrap;
+            font-size: 13px;
+            line-height: 1.6;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            display: none;
+        }
+
+        .status.success {
+            display: block;
+            color: #3fb950;
+            background: rgba(63, 185, 80, 0.05);
+            border: 1px solid rgba(63, 185, 80, 0.2);
+        }
+
+        .status.error {
+            display: block;
+            color: #f85149;
+            background: rgba(248, 81, 73, 0.05);
+            border: 1px solid rgba(248, 81, 73, 0.15);
+        }
+
+        .status.progress {
+            display: block;
+            color: #f0f3f6;
+            background: rgba(88, 166, 255, 0.05);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+        }
+
+        .status a {
+            color: #58a6ff;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .status a:hover {
+            text-decoration: underline;
+        }
+
+        .manifest-link {
+            display: block;
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(88, 166, 255, 0.08);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            border-radius: 8px;
+            color: #58a6ff;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📤 PermRepo Restore — Upload</h1>
+        <p class="subtitle">Ievelc visus failus un tie tiks augšupielādēti Arweave ar automātisku manifestu</p>
+        
+        <div class="drop-zone" id="dropZone">
+            <p>📁 Ievelc šeit failus vai visu <strong>dist</strong> mapi</p>
+            <p class="hint">Mapju struktūra un apakšmapes tiks saglabātas Arweave manifestā</p>
+        </div>
+
+        <div class="picker-row">
+            <button type="button" class="picker-btn" id="chooseFilesBtn">Izvēlēties failus</button>
+            <button type="button" class="picker-btn" id="chooseFolderBtn">Izvēlēties mapi</button>
+        </div>
+        <input type="file" id="fileInput" multiple style="display: none;">
+        <input type="file" id="folderInput" webkitdirectory directory multiple style="display: none;">
+        <p class="selection-summary" id="selectionSummary">Nav izvēlēti faili</p>
+        <div class="file-list" id="fileList"></div>
+        
+        <button id="uploadBtn" class="upload-btn" disabled>Augšupielādēt uz Arweave</button>
+        
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const folderInput = document.getElementById('folderInput');
+        const chooseFilesBtn = document.getElementById('chooseFilesBtn');
+        const chooseFolderBtn = document.getElementById('chooseFolderBtn');
+        const fileList = document.getElementById('fileList');
+        const selectionSummary = document.getElementById('selectionSummary');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const statusEl = document.getElementById('status');
+
+        chooseFilesBtn.addEventListener('click', () => fileInput.click());
+        chooseFolderBtn.addEventListener('click', () => folderInput.click());
+        dropZone.addEventListener('click', () => folderInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            try {
+                const files = await collectDroppedFiles(e.dataTransfer);
+                addFiles(files);
+            } catch (error) {
+                showError(error.message || String(error));
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            addFiles(Array.from(fileInput.files || []).map(file => ({ file, path: file.name })));
+            fileInput.value = '';
+        });
+
+        folderInput.addEventListener('change', () => {
+            const files = Array.from(folderInput.files || []);
+            // webkitRelativePath includes the selected directory's name. Strip that
+            // common first segment so the selected folder becomes the manifest root.
+            const paths = files.map(file => file.webkitRelativePath || file.name);
+            const firstSegments = paths.map(path => path.split('/')[0]);
+            const commonRoot = firstSegments.length > 0 && firstSegments.every(part => part === firstSegments[0]);
+            const items = files.map((file, index) => ({
+                file,
+                path: commonRoot && paths[index].includes('/')
+                    ? paths[index].slice(firstSegments[0].length + 1)
+                    : paths[index]
+            }));
+            addFiles(items);
+            folderInput.value = '';
+        });
+
+        async function collectDroppedFiles(dataTransfer) {
+            const items = Array.from(dataTransfer.items || []);
+            if (!items.length) {
+                return Array.from(dataTransfer.files || []).map(file => ({ file, path: file.name }));
+            }
+
+            const collected = [];
+            for (const item of items) {
+                const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+                if (entry) await walkEntry(entry, '', collected, entry.isDirectory);
+                else {
+                    const file = item.getAsFile && item.getAsFile();
+                    if (file) collected.push({ file, path: file.name });
+                }
+            }
+            return collected;
+        }
+
+        function walkEntry(entry, parentPath, output, omitDirectoryName = false) {
+            return new Promise((resolve, reject) => {
+                if (entry.isFile) {
+                    entry.file(file => {
+                        output.push({ file, path: parentPath ? parentPath + '/' + file.name : file.name });
+                        resolve();
+                    }, reject);
+                    return;
+                }
+                if (!entry.isDirectory) return resolve();
+
+                const reader = entry.createReader();
+                const children = [];
+                const currentPath = omitDirectoryName
+                    ? parentPath
+                    : (parentPath ? parentPath + '/' + entry.name : entry.name);
+                const readBatch = () => reader.readEntries(async entries => {
+                    if (!entries.length) {
+                        try {
+                            for (const child of children) {
+                                await walkEntry(child, currentPath, output);
+                            }
+                            resolve();
+                        } catch (error) { reject(error); }
+                        return;
+                    }
+                    children.push(...entries);
+                    readBatch();
+                }, reject);
+                readBatch();
+            });
+        }
+
+        function addFiles(items) {
+            const existingPaths = new Set(selectedFiles.map(item => item.path));
+            for (const item of items) {
+                if (!item || !item.file || !item.path) continue;
+                const normalizedPath = normalizeClientPath(item.path);
+                if (!normalizedPath || existingPaths.has(normalizedPath)) continue;
+                selectedFiles.push({ file: item.file, path: normalizedPath });
+                existingPaths.add(normalizedPath);
+            }
+            updateFileList();
+        }
+
+        function normalizeClientPath(value) {
+            const path = String(value).replace(/\\/g, '/').replace(/^\.\//, '');
+            const parts = path.split('/');
+            if (!path || path.startsWith('/') || parts.some(part => !part || part === '.' || part === '..')) return null;
+            return path;
+        }
+
+        function updateFileList() {
+            fileList.innerHTML = '';
+            if (selectedFiles.length === 0) {
+                uploadBtn.disabled = true;
+                selectionSummary.textContent = 'Nav izvēlēti faili';
+                return;
+            }
+
+            let total = 0;
+            selectedFiles.forEach((item, index) => {
+                const file = item.file;
+                total += file.size;
+                const div = document.createElement('div');
+                div.className = 'file-item';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'file-item-name';
+                nameSpan.textContent = '📄 ' + item.path;
+                nameSpan.title = item.path;
+
+                const sizeSpan = document.createElement('span');
+                sizeSpan.className = 'file-item-size';
+                sizeSpan.textContent = formatBytes(file.size);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'file-item-remove';
+                removeBtn.textContent = '✕';
+                removeBtn.type = 'button';
+                removeBtn.setAttribute('aria-label', 'Noņemt ' + item.path);
+                removeBtn.onclick = () => {
+                    selectedFiles.splice(index, 1);
+                    updateFileList();
+                };
+
+                div.append(nameSpan, sizeSpan, removeBtn);
+                fileList.appendChild(div);
+            });
+
+            selectionSummary.textContent = `Izvēlēti ${selectedFiles.length} faili • ${formatBytes(total)} kopā`;
+            uploadBtn.disabled = false;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result).split(',')[1]);
+                reader.onerror = () => reject(new Error('Neizdevās nolasīt failu: ' + file.name));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function showError(message) {
+            statusEl.className = 'status error';
+            statusEl.textContent = '❌ ' + message;
+        }
+
+        uploadBtn.addEventListener('click', async function() {
+            if (selectedFiles.length === 0) return;
+            uploadBtn.disabled = true;
+            chooseFilesBtn.disabled = true;
+            chooseFolderBtn.disabled = true;
+            statusEl.className = 'status progress';
+            statusEl.textContent = '⏳ Sagatavo ' + selectedFiles.length + ' failus...';
+
+            try {
+                const files = [];
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const item = selectedFiles[i];
+                    statusEl.textContent = `⏳ Nolasa ${i + 1}/${selectedFiles.length}: ${item.path}...`;
+                    files.push({ name: item.path, content: await fileToBase64(item.file) });
+                }
+
+                statusEl.textContent = '⏳ Augšupielādē ' + files.length + ' failus uz Arweave...\n\nMapju ceļi tiks saglabāti manifestā.';
+                const response = await fetch('/api/upload-bundle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || `Augšupielādes kļūda (HTTP ${response.status})`);
+                }
+
+                statusEl.className = 'status success';
+                statusEl.innerHTML = '';
+                const successText = document.createElement('div');
+                successText.textContent = '✅ Augšupielāde pabeigta!\n\n' +
+                    'Faili: ' + result.fileCount + '\n' +
+                    'Index: ' + result.index + '\n' +
+                    'Kopējais izmērs: ' + formatBytes(result.totalBytes) + '\n\n' +
+                    '📦 Manifest TX ID:\n' + result.manifestTxId;
+                statusEl.appendChild(successText);
+
+                const linkEl = document.createElement('a');
+                linkEl.className = 'manifest-link';
+                linkEl.href = 'https://ar-io.dev/' + encodeURIComponent(result.manifestTxId);
+                linkEl.target = '_blank';
+                linkEl.rel = 'noopener noreferrer';
+                linkEl.textContent = '🌐 Atvērt: https://ar-io.dev/' + result.manifestTxId;
+                statusEl.appendChild(linkEl);
+
+                selectedFiles = [];
+                updateFileList();
+            } catch (error) {
+                console.error('Kļūda:', error);
+                showError(error.message || String(error));
+            } finally {
+                uploadBtn.disabled = selectedFiles.length === 0;
+                chooseFilesBtn.disabled = false;
+                chooseFolderBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
